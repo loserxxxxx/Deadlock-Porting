@@ -1,0 +1,14 @@
+schema_version = "1.0.0"
+
+id = "deadlock_porting"
+version = "0.4.1"
+name = "Deadlock Porting"
+tagline = "Import Deadlock models with posing controls"
+maintainer = "DeadlockPorting"
+type = "add-on"
+
+tags = ["Rigging", "Import-Export", "Animation"]
+
+blender_version_min = "4.2.0"
+
+license = ["SPDX:GPL-3.0-or-later"]

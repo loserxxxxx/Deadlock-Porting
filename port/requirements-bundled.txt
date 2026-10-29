@@ -1,0 +1,6 @@
+numpy==2.5.4
+Pillow>=12,<13
+meshoptimizer==0.2.30a0
+zstandard>=0.22,<1
+lz4>=4,<5
+texture2ddecoder==1.0.6
