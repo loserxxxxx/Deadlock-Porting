@@ -18,6 +18,9 @@ def handle(operation, data):
     if operation == 'blender_projects':
         from blender_sessions import opened_projects
         return opened_projects()
+    if operation == 'live_blender_sessions':
+        from live_blender import sessions
+        return sessions()
     if operation == 'scan_installations':
         desktop.detected_installations.cache_clear()
         return desktop.detected_installations()
@@ -58,6 +61,13 @@ def handle(operation, data):
     if operation == 'export':
         if not isinstance(data, dict) or data.get('format') not in ('blend', 'fbx', 'glb'):
             raise ValueError('Invalid export request')
+        if data.get('destination_mode') not in (None, 'file', 'project', 'live'):
+            raise ValueError('Invalid export destination')
+        if data.get('destination_mode') == 'live':
+            from live_blender import session
+            if not isinstance(data.get('blender_scene'), str) or not data['blender_scene']:
+                raise ValueError('Choose a connected Blender scene')
+            session(data.get('blender_session'), data.get('blender_scene'))
         if data.get('destination_mode') == 'project':
             from project_export import validate_project
             validate_project(data.get('project_path'), require_closed=True)

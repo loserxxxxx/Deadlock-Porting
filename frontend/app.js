@@ -15,6 +15,7 @@ const previewCache = new Map();
 const previewJobs = new Set();
 let visibleModels = [], previewPolling = false, startupModels = [];
 let blenderProjects = [], scanningProjects = false;
+let liveSessions = [], scanningLive = false;
 async function api(operation, data = null) {
     return window.__TAURI__.core.invoke('backend', { operation, data });
 }
@@ -241,6 +242,8 @@ function formatNote() {
 function exportLabel() {
     if (busy)
         return 'Exporting…';
+    if ($('destinationMode').value === 'live')
+        return 'Send to open Blender ↗';
     if ($('destinationMode').value === 'project')
         return 'Add to Blender project ↗';
     return $('openBlender').checked ? 'Export to Blender ↗' : 'Export model ↗';
@@ -260,20 +263,82 @@ for (const button of document.querySelectorAll('[data-destination]')) {
 $('outputSettings').onclick = () => $('settings').click();
 $('destinationMode').onchange = () => {
     const existing = $('destinationMode').value === 'project';
+    const live = $('destinationMode').value === 'live';
     for (const button of document.querySelectorAll('[data-destination]')) {
         button.setAttribute('aria-pressed', String(button.dataset.destination === $('destinationMode').value));
     }
     $('existingProject').hidden = !existing;
+    $('liveBlender').hidden = !live;
+    $('openBlender').disabled = live;
+    if (live) {
+        revealPanel($('liveBlender'));
+        refreshLiveBlender();
+    }
     if (existing)
         revealPanel($('existingProject'));
-    $('format').disabled = existing;
-    if (existing)
+    $('format').disabled = existing || live;
+    if (existing || live)
         $('format').value = 'blend';
     formatNote();
     $('export').textContent = exportLabel();
     if (existing)
         refreshBlenderProjects();
 };
+async function refreshLiveBlender() {
+    if (scanningLive || busy)
+        return;
+    scanningLive = true;
+    $('refreshLiveBlender').disabled = true;
+    const previous = $('liveBlenderSessions').value;
+    try {
+        liveSessions = await api('live_blender_sessions');
+        const select = $('liveBlenderSessions');
+        select.replaceChildren();
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = liveSessions.length ? 'Choose an open scene' : 'Enable the Blender add-on to connect';
+        select.append(placeholder);
+        for (const session of liveSessions) {
+            const option = document.createElement('option');
+            option.value = session.id;
+            option.textContent = `${session.name} / ${session.scene} / Blender ${session.version}`;
+            select.append(option);
+        }
+        if (liveSessions.some(session => session.id === previous))
+            select.value = previous;
+        else if (liveSessions.length === 1)
+            select.value = liveSessions[0].id;
+        liveSessionStatus();
+    }
+    catch (error) {
+        $('liveBlenderStatus').textContent = String(error);
+    }
+    finally {
+        scanningLive = false;
+        $('refreshLiveBlender').disabled = false;
+    }
+}
+function liveSessionStatus() {
+    const session = liveSessions.find(session => session.id === $('liveBlenderSessions').value);
+    $('liveBlenderStatus').textContent = session ? `${session.status}. Blender stays open; unsaved work is preserved.`
+        : 'Enable Deadlock Porting Live in Blender, then refresh.';
+}
+$('liveBlenderSessions').onchange = liveSessionStatus;
+$('refreshLiveBlender').onclick = refreshLiveBlender;
+$('saveBlenderAddon').onclick = async () => {
+    try {
+        const path = await window.__TAURI__.core.invoke('save_blender_addon');
+        if (path)
+            $('liveBlenderStatus').textContent = 'Add-on saved. In Blender: Preferences > Add-ons > Install from Disk. Choose the ZIP and enable Deadlock Porting Live.';
+    }
+    catch (error) {
+        $('liveBlenderStatus').textContent = String(error);
+    }
+};
+setInterval(() => {
+    if ($('destinationMode').value === 'live' && document.activeElement !== $('liveBlenderSessions'))
+        refreshLiveBlender();
+}, 3000);
 async function refreshBlenderProjects() {
     if (scanningProjects)
         return;
@@ -433,13 +498,19 @@ $('export').onclick = async () => {
         $('status').classList.add('error');
         return;
     }
+    const live = $('destinationMode').value === 'live' ? liveSessions.find(session => session.id === $('liveBlenderSessions').value) : null;
+    if ($('destinationMode').value === 'live' && !live) {
+        $('status').textContent = 'Choose a connected Blender scene first.';
+        return;
+    }
     busy = true;
     $('export').classList.add('is-exporting');
     $('export').disabled = true;
     try {
         await api('export', { model: selected.model, format: $('format').value,
             controls: !$('controls').disabled && $('controls').checked, open_blender: $('openBlender').checked,
-            destination_mode: $('destinationMode').value, project_path: $('projectPath').value.trim() });
+            destination_mode: $('destinationMode').value, project_path: $('projectPath').value.trim(),
+            blender_session: live?.id, blender_scene: live?.scene_id });
         $('status').textContent = 'Preparing export…';
     }
     catch (error) {

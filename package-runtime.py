@@ -11,6 +11,7 @@ import urllib.request
 import zipfile
 
 ROOT = Path(__file__).resolve().parent
+subprocess.run([sys.executable, str(ROOT / 'build-blender-addon.py')], check=True)
 PACKAGE = ROOT / 'package'
 PACKAGE.mkdir(exist_ok=True)
 if not (ROOT / 'port/previews/index.json').is_file():
@@ -41,7 +42,7 @@ with tempfile.TemporaryDirectory(prefix='payload-', dir=PACKAGE) as temporary:
     port.mkdir()
     for name in ('desktop.py', 'tauri_bridge.py', 'installations.py', 'curated_props.py', 'rig_policy.py', 'deadlock_port.py',
                  'blender_export.py', 'blender_open.py', 'blender_append.py', 'blender_sessions.py', 'project_export.py', 'hero_props.py',
-                 'asset_previews.py', 'render_preview.py'):
+                 'asset_previews.py', 'render_preview.py', 'live_blender.py', 'live_protocol.py'):
         shutil.copy2(ROOT / 'port' / name, port / name)
     for name in ('helpers', 'deadlock_porting', 'previews'):
         shutil.copytree(ROOT / 'port' / name, port / name, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))

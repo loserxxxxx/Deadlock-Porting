@@ -22,8 +22,14 @@ filename = f'DeadlockPorting-{version}-Windows-x64.exe'
 destination = root / 'dist/release'
 destination.mkdir(parents=True, exist_ok=True)
 (destination / filename).write_bytes(content)
+addon_version = tomllib.loads((root / 'blender_addon/deadlock_porting_live/blender_manifest.toml').read_text(encoding='utf-8'))['version']
+addon_name = f'DeadlockPorting-Blender-Addon-{addon_version}.zip'
+addon = root / 'package/DeadlockPorting-Blender-Addon.zip'
+shutil.copy2(addon, destination / addon_name)
 manifest = {'version': version, 'url': f'https://deadlockporting.app/downloads/{filename}', 'bytes': len(content),
     'signature': base64.b64encode(key.sign((version + '\n').encode() + content)).decode()}
 (destination / 'windows.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
 (destination / 'sha256.txt').write_text(hashlib.sha256(content).hexdigest() + '  ' + filename + '\n')
+with (destination / 'sha256.txt').open('a', encoding='utf-8') as sums:
+    sums.write(hashlib.sha256(addon.read_bytes()).hexdigest() + '  ' + addon_name + chr(10))
 print(f'Prepared {version} in dist/release')

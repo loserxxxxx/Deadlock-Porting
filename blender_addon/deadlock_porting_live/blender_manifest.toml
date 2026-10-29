@@ -1,0 +1,14 @@
+schema_version = "1.0.0"
+id = "deadlock_porting_live"
+version = "1.0.0"
+name = "Deadlock Porting Live"
+tagline = "Receive model exports in the open Blender scene"
+maintainer = "Deadlock Porting"
+type = "add-on"
+website = "https://deadlockporting.app"
+tags = ["Import-Export", "Rigging"]
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-3.0-or-later"]
+
+[permissions]
+files = "Receive local model exports in the current scene"

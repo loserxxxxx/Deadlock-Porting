@@ -247,6 +247,12 @@ def export(request):
             raise ValueError('This asset contains no render geometry to export')
         fmt = request['format']
         project = None
+        live_session = None
+        if request.get('destination_mode') == 'live':
+            from live_blender import session
+            live_session = session(request.get('blender_session'), request.get('blender_scene'))
+            cfg = cfg | {'blender': live_session['binary']}
+            fmt = 'blend'
         if request.get('destination_mode') == 'project':
             from project_export import validate_project
             project = validate_project(request.get('project_path'), require_closed=True)
@@ -286,19 +292,27 @@ def export(request):
             raise RuntimeError('Output file was not created')
         result = destination
         backup = None
-        if project is not None:
+        live_result = None
+        if live_session is not None:
+            from live_blender import deliver
+            def update_live_status(message):
+                with lock:
+                    state['status'] = message
+            update_live_status('Sending model to the open Blender scene')
+            live_result = deliver(live_session, destination, hero['name'], update_status=update_live_status)
+        elif project is not None:
             from project_export import append_to_project
             with lock:
                 state['status'] = 'Adding model to existing project'
             backup = append_to_project(project, destination, cfg, env, run, ROOT)
             result = project
-        if request.get('open_blender', True):
+        if live_session is None and request.get('open_blender', True):
             with lock:
                 state['status'] = 'Opening Blender'
             open_in_blender(result, cfg, env, log_folder=folder)
         with lock:
-            message = f'Added to project: {result}. Backup: {backup}' if project is not None else f'Export complete: {result}'
-            state.update(status=message, result=str(result), asset=str(destination), project_backup=str(backup) if backup else None)
+            message = f'Added to open Blender scene: {live_result["collection"]}. Save your project in Blender when ready.' if live_result else f'Added to project: {result}. Backup: {backup}' if project is not None else f'Export complete: {result}'
+            state.update(status=message, result=str(result), asset=str(destination), project_backup=str(backup) if backup else None, live_import=live_result)
     except Exception as exc:
         log(str(exc) + '\n')
         with lock:

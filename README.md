@@ -24,6 +24,10 @@ The portable executable is written to `dist/Deadlock Porting.exe`. The build dow
 
 Bundled thumbnails are in `port/previews`. To rebuild them from an installed game, run `build-preview-pack.py` with the project Python environment before building.
 
+## Open Blender projects
+
+Choose **Open Blender** in the app and click **Get Blender add-on**. Install the ZIP in Blender Preferences, enable **Deadlock Porting Live**, and choose the connected scene in the app. Exports are added at the 3D cursor without restarting Blender or saving over the project. Unsaved and untitled projects are supported. See [the add-on guide](blender_addon/README.md).
+
 ## Tests
 
 ```powershell
@@ -34,6 +38,7 @@ node --test frontend/library.test.mjs frontend/updater.test.mjs
 .\.venv\Scripts\python.exe port/test_skinning.py
 .\.venv\Scripts\python.exe port/test_vertex_colors.py
 .\.venv\Scripts\python.exe port/test_previews.py
+.\.venv\Scripts\python.exe port/test_live_blender.py
 cargo test --manifest-path src-tauri/Cargo.toml updater::tests
 cargo test --manifest-path src-tauri/Cargo.toml presence::tests
 ```
@@ -58,7 +63,7 @@ Only the public verification key is included here. Official releases must be sig
 
 ## Data
 
-Settings, cached previews, exports, and logs are stored under `%LOCALAPPDATA%/DeadlockPorting`. Existing-project imports create a backup before replacing a saved Blender file. Save and close the target project before importing.
+Settings, cached previews, exports, and logs are stored under `%LOCALAPPDATA%/DeadlockPorting`. Saved-file project imports create a backup before replacing a closed Blender file. Live add-on imports modify only the open scene; save the project yourself when ready.
 
 ## Development
 

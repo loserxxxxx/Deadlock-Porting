@@ -147,6 +147,7 @@ async fn backend(
         "portrait",
         "settings",
         "blender_projects",
+        "live_blender_sessions",
         "scan_installations",
         "save_settings",
         "state",
@@ -180,6 +181,19 @@ async fn choose_blender_project(app: tauri::AppHandle) -> Result<Option<String>,
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn save_blender_addon(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.dialog().file().add_filter("Blender add-on", &["zip"])
+            .set_file_name("DeadlockPorting-Blender-Addon.zip").blocking_save_file()
+            .map(|file| -> Result<String, String> {
+                let path = file.into_path().map_err(|e| e.to_string())?;
+                std::fs::write(&path, include_bytes!("../../package/DeadlockPorting-Blender-Addon.zip")).map_err(|e| e.to_string())?;
+                Ok(path.to_string_lossy().into_owned())
+            }).transpose()
+    }).await.map_err(|e| e.to_string())?
 }
 
 fn standalone_test() -> Result<Value, String> {
@@ -263,6 +277,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             backend,
             choose_blender_project,
+            save_blender_addon,
             window_action,
             update_presence,
             updater::check_update,
