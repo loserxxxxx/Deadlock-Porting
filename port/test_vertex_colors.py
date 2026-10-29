@@ -11,9 +11,18 @@ class VertexColorTests(unittest.TestCase):
     def test_normalized_rgba_and_bgra(self):
         fields = [{'m_pSemanticName': 'COLOR', 'm_nSemanticIndex': 0, 'm_Format': 28, 'm_nOffset': 0}]
         vertices = np.array([[31, 29, 100, 255], [231, 7, 229, 128]], np.uint8)
-        np.testing.assert_allclose(vertex_colors(vertices, fields, 4), vertices / 255.0)
+        expected = vertices.astype(np.float32) / 255.0
+        rgb = expected[:, :3]
+        expected[:, :3] = np.where(rgb <= .04045, rgb / 12.92, ((rgb + .055) / 1.055) ** 2.4)
+        np.testing.assert_allclose(vertex_colors(vertices, fields, 4), expected)
         fields[0]['m_Format'] = 87
-        np.testing.assert_allclose(vertex_colors(vertices, fields, 4), vertices[:, [2, 1, 0, 3]] / 255.0)
+        np.testing.assert_allclose(vertex_colors(vertices, fields, 4), expected[:, [2, 1, 0, 3]])
+
+    def test_srgb_midpoint_and_alpha_are_not_interchangeable(self):
+        fields = [{'m_pSemanticName': 'COLOR', 'm_Format': 28, 'm_nOffset': 0}]
+        vertices = np.array([[128, 10, 255, 128]], np.uint8)
+        np.testing.assert_allclose(vertex_colors(vertices, fields, 4),
+                                   [[0.2158605, 0.00303527, 1.0, 0.5019608]], rtol=1e-5)
 
     def test_material_flag_is_required(self):
         self.assertFalse(uses_vertex_colors({}))

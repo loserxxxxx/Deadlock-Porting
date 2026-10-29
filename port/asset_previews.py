@@ -24,7 +24,7 @@ runner = None
 
 
 def cache_key(model, cfg):
-    identity = dict(version=3, model=model, game=str(Path(cfg['vpk']).resolve()).lower(),
+    identity = dict(version=4, model=model, game=str(Path(cfg['vpk']).resolve()).lower(),
                     blender=cfg['blender'],
                     game_stamp=Path(cfg['vpk']).stat().st_mtime_ns)
     return hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()

@@ -302,7 +302,7 @@ def read_material(pak, vmat_path):
 
 
 def uses_vertex_colors(material):
-    return any(p.get('m_name') == 'F_VERTEX_COLOR' and p.get('m_nValue')
+    return any(p.get('m_name') in ('F_VERTEX_COLOR', 'F_PAINT_VERTEX_COLORS') and p.get('m_nValue')
                for p in material.get('m_intParams') or [])
 
 
@@ -327,7 +327,10 @@ def vertex_colors(verts, fields, stride):
         colors = colors[:, [2, 1, 0, 3]]
     if channels == 3:
         colors = np.column_stack((colors, np.ones(len(colors), np.float32)))
-    return np.ascontiguousarray(np.clip(np.nan_to_num(colors), 0.0, 1.0), np.float32)
+    colors = np.ascontiguousarray(np.clip(np.nan_to_num(colors), 0.0, 1.0), np.float32)
+    rgb = colors[:, :3]
+    colors[:, :3] = np.where(rgb <= 0.04045, rgb / 12.92, ((rgb + 0.055) / 1.055) ** 2.4)
+    return colors
 
 
 def color_texture(pak, vmat_path, material=None):
