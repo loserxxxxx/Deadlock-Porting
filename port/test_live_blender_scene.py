@@ -29,6 +29,7 @@ scene.cursor.location = (7, -3, 2)
 scene.render.resolution_x, scene.render.resolution_y = 321, 123
 camera, world = scene.camera, scene.world
 addon.register()
+addon.start()
 (folder / 'ready.json').write_text(json.dumps({'pid': os.getpid()}))
 
 try:

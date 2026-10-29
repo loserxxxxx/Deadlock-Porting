@@ -3,6 +3,7 @@ import base64
 import json
 import sys
 import threading
+from pathlib import Path
 
 import desktop
 import asset_previews
@@ -21,6 +22,20 @@ def handle(operation, data):
     if operation == 'live_blender_sessions':
         from live_blender import sessions
         return sessions()
+    if operation == 'install_blender_addon':
+        with desktop.lock:
+            if desktop.state['busy']:
+                raise ValueError('Wait for the current export to finish before installing the add-on')
+        from addon_install import install
+        from live_blender import session, sessions
+        blender = desktop.settings()['blender']
+        if isinstance(data, dict) and data.get('session_id'):
+            blender = session(data['session_id'])['binary']
+        for candidate in sessions():
+            connected = session(candidate['id'])
+            if str(Path(connected['binary']).resolve()).lower() == str(Path(blender).resolve()).lower():
+                return dict(ok=True, installed=True, enabled=True, needs_enable=False, connected=True)
+        return install(blender)
     if operation == 'scan_installations':
         desktop.detected_installations.cache_clear()
         return desktop.detected_installations()

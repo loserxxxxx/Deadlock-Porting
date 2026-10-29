@@ -72,3 +72,7 @@ Parts of the code and documentation were developed with AI assistance. The proje
 ## Licensing
 
 The Blender module declares GPL-3.0-or-later; its license is included in `port/deadlock_porting/LICENSE`. Dependencies retain their respective licenses. A project-wide license has not been selected. Deadlock and its assets belong to their respective rights holders. This is an independent project.
+
+### Automatic Blender add-on installation
+
+Select **Open Blender** in the app and click **Install Blender add-on**. With Blender closed, it is enabled for the next launch. With Blender open, enable it once in Preferences after installation. Existing preferences are preserved. See [the add-on guide](blender_addon/README.md).

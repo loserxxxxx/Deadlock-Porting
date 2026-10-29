@@ -243,14 +243,32 @@ class DLP_LIVE_PT_panel(bpy.types.Panel):
 classes = (DLP_LIVE_OT_import, DLP_LIVE_OT_toggle, DLP_LIVE_PT_panel)
 
 
+def delayed_start():
+    start()
+    return None
+
+
 def register():
+    for cls in reversed(classes):
+        if issubclass(cls, bpy.types.Operator):
+            domain, name = cls.bl_idname.split('.')
+            previous = bpy.types.Operator.bl_rna_get_subclass_py(domain.upper() + '_OT_' + name)
+        else:
+            previous = getattr(bpy.types, cls.__name__, None)
+        if previous and previous.__module__.endswith('deadlock_porting_live'):
+            bpy.utils.unregister_class(previous)
+    for handler in list(bpy.app.handlers.load_post):
+        if handler.__name__ == 'loaded' and handler.__module__.endswith('deadlock_porting_live'):
+            bpy.app.handlers.load_post.remove(handler)
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.app.handlers.load_post.append(loaded)
-    start()
+    bpy.app.timers.register(delayed_start, first_interval=.1)
 
 
 def unregister():
+    if bpy.app.timers.is_registered(delayed_start):
+        bpy.app.timers.unregister(delayed_start)
     stop()
     if loaded in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(loaded)

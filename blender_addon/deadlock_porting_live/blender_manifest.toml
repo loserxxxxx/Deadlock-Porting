@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "deadlock_porting_live"
-version = "1.0.0"
+version = "1.0.1"
 name = "Deadlock Porting Live"
 tagline = "Receive model exports in the open Blender scene"
 maintainer = "Deadlock Porting"

@@ -15,7 +15,7 @@ const previewCache = new Map();
 const previewJobs = new Set();
 let visibleModels = [], previewPolling = false, startupModels = [];
 let blenderProjects = [], scanningProjects = false;
-let liveSessions = [], scanningLive = false;
+let liveSessions = [], scanningLive = false, addonInstalling = false;
 async function api(operation, data = null) {
     return window.__TAURI__.core.invoke('backend', { operation, data });
 }
@@ -285,7 +285,7 @@ $('destinationMode').onchange = () => {
         refreshBlenderProjects();
 };
 async function refreshLiveBlender() {
-    if (scanningLive || busy)
+    if (scanningLive || busy || addonInstalling)
         return;
     scanningLive = true;
     $('refreshLiveBlender').disabled = true;
@@ -325,11 +325,37 @@ function liveSessionStatus() {
 }
 $('liveBlenderSessions').onchange = liveSessionStatus;
 $('refreshLiveBlender').onclick = refreshLiveBlender;
+$('installBlenderAddon').onclick = async () => {
+    if (addonInstalling || busy || updateInstalling)
+        return;
+    addonInstalling = true;
+    $('installBlenderAddon').disabled = true;
+    $('export').disabled = true;
+    $('addonInstallStatus').hidden = false;
+    $('addonInstallStatus').textContent = 'Installing the bundled add-on for Blender...';
+    try {
+        const result = await api('install_blender_addon', { session_id: $('liveBlenderSessions').value || null });
+        $('addonInstallStatus').textContent = result.connected ? 'The Blender add-on is already connected.'
+            : result.needs_enable ? 'Installed. In the open Blender, go to Preferences > Add-ons, Refresh Local, search Deadlock Porting Live, and enable it once. No restart needed.'
+                : `Installed and enabled for Blender ${result.blender_version}. Open Blender to connect.`;
+    }
+    catch (error) {
+        $('addonInstallStatus').textContent = `Installation failed: ${error}`;
+    }
+    finally {
+        addonInstalling = false;
+        $('installBlenderAddon').disabled = false;
+        $('export').disabled = busy || updateInstalling || !selected || !info?.exportable;
+        refreshLiveBlender();
+    }
+};
 $('saveBlenderAddon').onclick = async () => {
     try {
         const path = await window.__TAURI__.core.invoke('save_blender_addon');
-        if (path)
-            $('liveBlenderStatus').textContent = 'Add-on saved. In Blender: Preferences > Add-ons > Install from Disk. Choose the ZIP and enable Deadlock Porting Live.';
+        if (path) {
+            $('addonInstallStatus').hidden = false;
+            $('addonInstallStatus').textContent = 'ZIP saved. In Blender Preferences > Add-ons, choose Install from Disk and enable Deadlock Porting Live.';
+        }
     }
     catch (error) {
         $('liveBlenderStatus').textContent = String(error);
@@ -438,7 +464,7 @@ async function choose(item) {
             : details.skinned ? `Character · ${details.bones} bones · Ready to export` : 'Static model · Ready to export';
         $('modelDetails').classList.toggle('ready', details.exportable);
         formatNote();
-        $('export').disabled = busy || !info.exportable;
+        $('export').disabled = busy || addonInstalling || !info.exportable;
         previewStatus();
         if (info.exportable)
             requestPreviews([item.model], true, false, true);
@@ -491,7 +517,7 @@ setInterval(async () => {
     }
 }, 1200);
 $('export').onclick = async () => {
-    if (!selected || !info?.exportable || busy || updateInstalling)
+    if (!selected || !info?.exportable || busy || updateInstalling || addonInstalling)
         return;
     if ($('destinationMode').value === 'project' && !$('projectPath').value.trim()) {
         $('status').textContent = 'Choose an existing Blender project first.';
@@ -528,7 +554,7 @@ setInterval(async () => {
         const state = await api('state');
         busy = state.busy;
         $('export').classList.toggle('is-exporting', busy);
-        $('export').disabled = updateInstalling || busy || !selected || !info?.exportable;
+        $('export').disabled = updateInstalling || addonInstalling || busy || !selected || !info?.exportable;
         $('export').textContent = exportLabel();
         $('status').textContent = state.error || state.status;
         $('status').classList.toggle('error', !!state.error);

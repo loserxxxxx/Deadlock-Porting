@@ -102,7 +102,7 @@ struct Backend(Arc<Mutex<Option<Worker>>>);
 impl Backend {
     fn request(&self, operation: &str, data: Value) -> Result<Value, String> {
         let mut worker = self.0.lock().map_err(|_| "Worker lock failed")?;
-        if operation == "export" && updater::INSTALLING.load(std::sync::atomic::Ordering::SeqCst) {
+        if ["export", "install_blender_addon"].contains(&operation) && updater::INSTALLING.load(std::sync::atomic::Ordering::SeqCst) {
             return Err("An app update is in progress".into());
         }
         if worker.is_none() {
@@ -148,6 +148,7 @@ async fn backend(
         "settings",
         "blender_projects",
         "live_blender_sessions",
+        "install_blender_addon",
         "scan_installations",
         "save_settings",
         "state",

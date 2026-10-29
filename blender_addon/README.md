@@ -4,12 +4,12 @@ Send models from the desktop app directly into an open Blender scene. Blender st
 
 ## Install
 
-1. In the app, select **Open Blender** and click **Get Blender add-on** to save the ZIP. The ZIP is also attached to GitHub releases.
-2. In Blender 4.2 or newer, open **Edit → Preferences → Add-ons**.
-3. Open the menu in the upper-right corner, choose **Install from Disk**, and select the ZIP.
-4. Enable **Deadlock Porting Live**. No Blender restart is required.
-5. In the app, refresh the connected-scene list and choose the open project.
-6. Export a model. It is added at the current scene's 3D cursor in a new collection.
+1. In the app, select **Open Blender** and click **Install Blender add-on**. It uses the selected connected instance, or the Blender executable configured in Settings.
+2. If Blender is closed, the add-on is installed and enabled for its next launch.
+3. If Blender is already open, choose **Preferences → Add-ons → Refresh Local**, search **Deadlock Porting Live**, and enable it once. The installer does not overwrite preferences belonging to an open Blender session. No restart or ZIP browsing is needed.
+4. Choose the connected scene in the app and export.
+
+**Save ZIP instead** is available for manual installation. Existing add-on files are backed up before updates. When saving enablement preferences for a closed Blender, a backup of its previous preferences is retained and existing settings are preserved.
 
 The 3D View sidebar has a **Deadlock Porting** tab with connection status and a disconnect button. Object or Pose Mode is required to receive an import. Imports wait while Blender is rendering or working in another mode; unclaimed requests expire rather than importing unexpectedly much later.
 

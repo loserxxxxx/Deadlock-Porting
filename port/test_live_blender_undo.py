@@ -8,6 +8,7 @@ from deadlock_porting_live.protocol import atomic_json,signature,fingerprint,rea
 bpy.ops.wm.read_factory_settings(use_empty=False)
 bpy.data.objects['Cube'].location=(4,5,6);bpy.data.objects['Cube']['unsaved_work']='kept';bpy.context.scene.frame_set(17)
 addon.register()
+addon.start()
 try:
  asset=Path(sys.argv[sys.argv.index('--')+1]).resolve();identifier=uuid.uuid4().hex
  request=dict(protocol=1,request_id=identifier,session_id=addon._session['id'],expected_scene=addon.scene_id(),expected_project='',asset=str(asset),sha256=fingerprint(asset),label='Wraith',expires=time.time()+30)
