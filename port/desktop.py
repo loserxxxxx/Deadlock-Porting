@@ -102,7 +102,7 @@ def _catalog(config_json, game_stamp):
         }
         display = display_names.get(key, display_names.get(Path(model).name.removesuffix('.vmdl_c'), display))
         heroes.append(dict(id=key, name=display, model=model,
-                           development=data.get('m_eHeroDevelopmentState') != 'EHeroDevState_Release',
+                           development=display.casefold() != 'calico' and data.get('m_eHeroDevelopmentState') != 'EHeroDevState_Release',
                            portrait=portrait if portrait in pak.entries else ''))
     unique = {h['model']: h for h in heroes}
     return sorted(unique.values(), key=lambda h: h['name'])
