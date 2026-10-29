@@ -32,6 +32,8 @@ node --test frontend/library.test.mjs frontend/updater.test.mjs
 .\.venv\Scripts\python.exe port/test_blender_sessions.py
 .\.venv\Scripts\python.exe port/test_project_export.py
 .\.venv\Scripts\python.exe port/test_skinning.py
+.\.venv\Scripts\python.exe port/test_vertex_colors.py
+.\.venv\Scripts\python.exe port/test_previews.py
 cargo test --manifest-path src-tauri/Cargo.toml updater::tests
 cargo test --manifest-path src-tauri/Cargo.toml presence::tests
 ```

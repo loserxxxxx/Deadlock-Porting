@@ -64,7 +64,7 @@ class PreviewTests(unittest.TestCase):
         changed = self.cfg | {'helpers': 'new-runtime/port/helpers', 'output': 'different-export-folder'}
         self.assertEqual(original, previews.cache_key(MODEL, changed))
 
-    def test_reuses_previous_runtime_cache_without_rendering(self):
+    def test_legacy_preview_is_not_reused_after_material_changes(self):
         import hashlib, json
         identity = dict(version=1, model=MODEL, config=self.cfg,
                         game_stamp=Path(self.cfg['vpk']).stat().st_mtime_ns)
@@ -72,8 +72,8 @@ class PreviewTests(unittest.TestCase):
         old = previews.CACHE / key / 'preview.png'
         old.parent.mkdir(parents=True)
         old.write_bytes(b'cached image')
-        self.assertEqual(previews.request([MODEL], True)[0]['status'], 'ready')
-        self.assertFalse(previews.pending)
+        self.assertEqual(previews.request([MODEL], True)[0]['status'], 'queued')
+        self.assertEqual(len(previews.pending), 1)
 
     def test_bundled_thumbnail_is_ready_on_first_launch_without_render(self):
         import hashlib, json

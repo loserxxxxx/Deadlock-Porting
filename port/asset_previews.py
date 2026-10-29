@@ -24,29 +24,14 @@ runner = None
 
 
 def cache_key(model, cfg):
-    identity = dict(version=2, model=model, game=str(Path(cfg['vpk']).resolve()).lower(),
+    identity = dict(version=3, model=model, game=str(Path(cfg['vpk']).resolve()).lower(),
                     blender=cfg['blender'],
                     game_stamp=Path(cfg['vpk']).stat().st_mtime_ns)
     return hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
 
 
 def migrate_cached_preview(model, cfg, target):
-    """Reuse compatible thumbnails from older app payload directories."""
-    if seed_bundled_preview(model, cfg, target):
-        return
-    helpers = {cfg['helpers']}
-    runtime = desktop.DATA_ROOT / 'runtime'
-    if runtime.is_dir():
-        helpers.update(str(p / 'port/helpers') for p in runtime.iterdir() if p.is_dir())
-    for helper in helpers:
-        identity = dict(version=1, model=model, config=cfg | {'helpers': helper},
-                        game_stamp=Path(cfg['vpk']).stat().st_mtime_ns)
-        old_key = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
-        old = CACHE / old_key / 'preview.png'
-        if old.is_file():
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(old, target)
-            return
+    seed_bundled_preview(model, cfg, target)
 
 
 @lru_cache(maxsize=8)

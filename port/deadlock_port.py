@@ -294,13 +294,45 @@ def bone_world(rig, index):
     return world
 
 
-def color_texture(pak, vmat_path):
-    """Color texture path plus the material tint. Tint is white when the material has none."""
+def read_material(pak, vmat_path):
     path = vmat_path if vmat_path.endswith('_c') else vmat_path + '_c'
-    tint = (1.0, 1.0, 1.0, 1.0)
     if path not in pak.entries:
-        return None, tint
-    tree = KV3File(unwrap(data_block(pak.read(path)))).read()
+        return {}
+    return KV3File(unwrap(data_block(pak.read(path)))).read()
+
+
+def uses_vertex_colors(material):
+    return any(p.get('m_name') == 'F_VERTEX_COLOR' and p.get('m_nValue')
+               for p in material.get('m_intParams') or [])
+
+
+def vertex_colors(verts, fields, stride):
+    field = next((f for f in fields if f['m_pSemanticName'].upper() == 'COLOR'
+                  and f.get('m_nSemanticIndex', 0) == 0), None)
+    if field is None:
+        return None
+    fmt = field.get('m_Format')
+    layouts = {28: ('u1', 4, 255.0), 87: ('u1', 4, 255.0),
+               2: ('<f4', 4, 1.0), 6: ('<f4', 3, 1.0),
+               10: ('<f2', 4, 1.0), 11: ('<u2', 4, 65535.0)}
+    if fmt not in layouts:
+        raise ValueError(f'Unsupported vertex-color format {fmt}')
+    dtype, channels, divisor = layouts[fmt]
+    size = np.dtype(dtype).itemsize * channels
+    off = field['m_nOffset']
+    if off < 0 or off + size > stride:
+        raise ValueError('Vertex colors exceed the vertex stride')
+    colors = np.ascontiguousarray(verts[:, off:off + size]).view(dtype).reshape(-1, channels).astype(np.float32) / divisor
+    if fmt == 87:
+        colors = colors[:, [2, 1, 0, 3]]
+    if channels == 3:
+        colors = np.column_stack((colors, np.ones(len(colors), np.float32)))
+    return np.ascontiguousarray(np.clip(np.nan_to_num(colors), 0.0, 1.0), np.float32)
+
+
+def color_texture(pak, vmat_path, material=None):
+    tint = (1.0, 1.0, 1.0, 1.0)
+    tree = read_material(pak, vmat_path) if material is None else material
     for param in tree.get('m_vectorParams') or []:
         if param.get('m_name') in ('g_vColorTint', 'g_vColorTint1'):
             value = param.get('m_value') or [1, 1, 1, 1]
@@ -466,6 +498,9 @@ def write_glb(path, stem, parts, rig, materials):
                 attr[f'WEIGHTS_{influence_set}'] = push(np.ascontiguousarray(weights[:, sl]).tobytes(), 5126, 'VEC4', len(weights))
             if uv is not None:
                 attr['TEXCOORD_0'] = push(uv.tobytes(), 5126, 'VEC2', len(uv))
+            if part.get('colors') is not None and mat in part.get('vertex_color_materials', ()):
+                colors = np.ascontiguousarray(part['colors'], np.float32)
+                attr['COLOR_0'] = push(colors.tobytes(), 5126, 'VEC4', len(colors))
             primitives.append({
                 'attributes': attr,
                 'indices': push(tris.tobytes(), 5125, 'SCALAR', len(tris)),
@@ -568,6 +603,7 @@ def export_model(pak, model_path, out_dir):
     mtl = []
     written = {}
     materials = []
+    vertex_color_materials = set()
     parts = []
     v_base = 0
     for mesh_number, mesh in enumerate(render_meshes(data, embedded_meshes(raw, blocks, ctrl))):
@@ -615,7 +651,10 @@ def export_model(pak, model_path, out_dir):
                         lines.append(f'f {a} {b} {c}')
                 if mat not in written:
                     png = mat + '.png'
-                    tex, tint = color_texture(pak, draw.get('m_material') or '')
+                    material = read_material(pak, draw.get('m_material') or '')
+                    if uses_vertex_colors(material):
+                        vertex_color_materials.add(mat)
+                    tex, tint = color_texture(pak, draw.get('m_material') or '', material)
                     ok = save_png(pak, tex, out_dir / png)
                     written[mat] = (png if ok else None, tint)
                     materials.append((mat, (out_dir / png).read_bytes() if ok else None, tint))
@@ -623,7 +662,10 @@ def export_model(pak, model_path, out_dir):
                     if ok:
                         mtl.append(f'map_Kd {png}')
                     mtl.append('')
-            parts.append({'name': name, 'pos': pos, 'uv': uv, 'joints': joints, 'weights': weights, 'idx': idx, 'draws': draws})
+            colored = {mat for _start, _count, mat in draws if mat in vertex_color_materials}
+            colors = vertex_colors(verts, vb['m_inputLayoutFields'], stride) if colored else None
+            parts.append({'name': name, 'pos': pos, 'uv': uv, 'joints': joints, 'weights': weights, 'idx': idx, 'draws': draws,
+                          'colors': colors, 'vertex_color_materials': colored})
             v_base += len(pos)
             print(f'  {name}  {len(pos)} verts  {len(idx) // 3} tris')
     if not parts:
